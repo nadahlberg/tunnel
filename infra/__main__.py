@@ -1,7 +1,7 @@
 """One droplet running a dev tunnel: sish behind Caddy.
 
 Anyone listed in the repo's `users` file can expose a local port at
-https://<name>.flp-tunnel.xyz with a single ssh command. See README.md.
+https://<name>.<TUNNEL_DOMAIN> with a single ssh command. See README.md.
 """
 
 import os
@@ -11,7 +11,7 @@ import pulumi
 import pulumi_digitalocean as do
 import yaml
 
-DOMAIN = "flp-tunnel.xyz"  # dedicated to the tunnel; the zone is created below
+DOMAIN = os.environ["TUNNEL_DOMAIN"]  # dedicated to the tunnel; zone created below
 ADMIN = "nadahlberg"  # GitHub user whose keys get root on the droplet
 REGION = "nyc3"
 
@@ -38,7 +38,7 @@ cloud_config = {
         repo_file("scripts/reap-tunnels.sh", mode="0755"),
         {
             "path": "/opt/tunnel/.env",
-            "content": f"DO_DNS_TOKEN={os.environ['DIGITALOCEAN_TOKEN']}\n",
+            "content": f"TUNNEL_DOMAIN={DOMAIN}\nDO_DNS_TOKEN={os.environ['DIGITALOCEAN_TOKEN']}\n",
             "permissions": "0600",
         },
         {

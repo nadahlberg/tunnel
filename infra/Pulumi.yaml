@@ -1,5 +1,5 @@
 name: flp-dev-infra
-description: Dev tunnel - expose local ports at https://<name>.flp-tunnel.xyz
+description: Dev tunnel - expose local ports at https://<name>.<TUNNEL_DOMAIN>
 runtime:
   name: python
   options:

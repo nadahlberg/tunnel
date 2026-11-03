@@ -3,7 +3,7 @@ services:
     image: antoniomika/sish:v3.0.4
     restart: unless-stopped
     command:
-      - --domain=flp-tunnel.xyz
+      - --domain=${TUNNEL_DOMAIN}
       - --ssh-address=:2222
       - --http-address=:8080
       - --authentication=true
@@ -26,6 +26,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
+      TUNNEL_DOMAIN: ${TUNNEL_DOMAIN}
       DO_DNS_TOKEN: ${DO_DNS_TOKEN}
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
