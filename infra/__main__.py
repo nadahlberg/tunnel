@@ -1,7 +1,7 @@
 """One droplet running a dev tunnel: sish behind Caddy.
 
 Anyone listed in the repo's `users` file can expose a local port at
-https://<name>.flp-tunnel.xyz with a single ssh command. See README.md.
+https://<name>.<TUNNEL_DOMAIN> with a single ssh command. See README.md.
 """
 
 import os
@@ -11,7 +11,7 @@ import pulumi
 import pulumi_digitalocean as do
 import yaml
 
-DOMAIN = "flp-tunnel.xyz"  # dedicated to the tunnel; the zone is created below
+DOMAIN = os.environ["TUNNEL_DOMAIN"]  # dedicated to the tunnel; zone created below
 ADMIN = "nadahlberg"  # GitHub user whose keys get root on the droplet
 REGION = "nyc3"
 
@@ -27,6 +27,13 @@ def repo_file(path: str, mode: str = "0644") -> dict:
     }
 
 
+# The droplet's .env: compose and sync-keys.sh read it. The optional
+# ALLOWED_USERS / ALLOWED_USERS_URL override where the user list comes from.
+env = {"TUNNEL_DOMAIN": DOMAIN, "DO_DNS_TOKEN": os.environ["DIGITALOCEAN_TOKEN"]}
+for key in ("ALLOWED_USERS", "ALLOWED_USERS_URL"):
+    if os.environ.get(key):
+        env[key] = os.environ[key]
+
 cloud_config = {
     "package_update": True,
     "packages": ["docker.io", "docker-compose-v2", "rsync", "ssh-import-id"],
@@ -38,7 +45,7 @@ cloud_config = {
         repo_file("scripts/reap-tunnels.sh", mode="0755"),
         {
             "path": "/opt/tunnel/.env",
-            "content": f"DO_DNS_TOKEN={os.environ['DIGITALOCEAN_TOKEN']}\n",
+            "content": "".join(f"{k}={v}\n" for k, v in env.items()),
             "permissions": "0600",
         },
         {

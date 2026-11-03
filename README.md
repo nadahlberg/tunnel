@@ -1,4 +1,4 @@
-# flp-tunnel
+# tunnel
 
 A dev tunnel. Expose a port on your machine at a stable public HTTPS
 hostname, for the things localhost can't do: OAuth redirect URIs, webhooks,
@@ -6,12 +6,15 @@ and MCP clients like Claude and ChatGPT that have to reach your server over
 the open internet.
 
 ```sh
-ssh -p 2222 -R <name>:80:localhost:<port> tunnel.flp-tunnel.xyz
+ssh -p 2222 -R <name>:80:localhost:<port> tunnel.my-tunnel.com
 ```
 
-That's the whole client. `https://<name>.flp-tunnel.xyz` now routes to
+That's the whole client. `https://<name>.my-tunnel.com` now routes to
 `localhost:<port>` until the ssh exits. Names are first come, first served
 while held; the bind fails if someone else has it.
+
+Throughout this README, `my-tunnel.com` stands for whatever domain your
+deployment uses (its `TUNNEL_DOMAIN`, see [Deploying](#deploying)).
 
 ## Getting access
 
@@ -19,18 +22,30 @@ Add your GitHub username to [users](users) and merge the PR. The server
 re-syncs everyone's keys from `github.com/<user>.keys` every minute, and you
 connect with the matching private key. Nothing to install or configure.
 
+A deployment can take its user list from somewhere else instead. In the
+server's `.env`, the first of these that is set wins:
+
+| Variable            | Meaning                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `ALLOWED_USERS`     | Comma-separated GitHub usernames, e.g. `alice,bob`             |
+| `ALLOWED_USERS_URL` | A URL or local path of a text file with one username per line  |
+| *(neither)*         | The [users](users) file on this repo's `main` branch           |
+
+The file formats are the same as [users](users): one username per line,
+`#` comments allowed.
+
 ## Using it
 
-A Django dev server on :8000, public at `https://cl-nathan.flp-tunnel.xyz`:
+A dev server on :8000, public at `https://myapp.my-tunnel.com`:
 
 ```sh
-ssh -p 2222 -R cl-nathan:80:localhost:8000 tunnel.flp-tunnel.xyz
+ssh -p 2222 -R myapp:80:localhost:8000 tunnel.my-tunnel.com
 ```
 
 To ride through network drops, the same thing via autossh:
 
 ```sh
-autossh -M 0 -p 2222 -R cl-nathan:80:localhost:8000 tunnel.flp-tunnel.xyz
+autossh -M 0 -p 2222 -R myapp:80:localhost:8000 tunnel.my-tunnel.com
 ```
 
 Tunnels have a 12-hour maximum lifetime: a cron on the server kills older
@@ -39,7 +54,8 @@ whenever you need more time — autossh (above) does that automatically.
 
 The app behind the tunnel still has to accept its public hostname — for
 Django that's `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` and
-`SECURE_PROXY_SSL_HEADER`; for the MCP server, `MCP_BASE_URL`.
+`SECURE_PROXY_SSL_HEADER`; an MCP server usually has a base-URL setting to
+point at `https://myapp.my-tunnel.com`.
 
 ## How it works
 
@@ -52,9 +68,13 @@ One small VM runs the two containers in [docker-compose.yml](docker-compose.yml)
 - [Caddy](https://caddyserver.com) in front holds a single wildcard
   certificate, solved with a DNS-01 challenge against the zone.
 
+Both read the domain from `TUNNEL_DOMAIN` in the `.env` file beside the
+compose file; nothing else in the service knows the hostname.
+
 A cron runs [scripts/sync-keys.sh](scripts/sync-keys.sh) every minute to
-mirror the `users` file's GitHub keys into sish's watched directory, so
-access changes need no deploy.
+mirror the allowed users' GitHub keys into sish's watched directory, so
+access changes need no deploy. It reads the same `.env` for
+`ALLOWED_USERS` / `ALLOWED_USERS_URL` (see [Getting access](#getting-access)).
 
 ## Deploying
 
@@ -66,15 +86,17 @@ scratch:
 2. A dedicated domain with `tunnel` and `*` A records at the VM's static
    IP. Use a domain of its own, not a subdomain of a production site —
    tunneled apps would otherwise be same-site with production (cookie
-   scope, SameSite).
+   scope, SameSite). Put it in `/opt/tunnel/.env` as
+   `TUNNEL_DOMAIN=my-tunnel.com`.
 3. TLS: swap the Caddy DNS plugin in
    [docker/caddy/Dockerfile](docker/caddy/Dockerfile) for the zone's
    provider (e.g. `caddy-dns/route53`), adjust the `tls` block in the
    [Caddyfile](docker/caddy/Caddyfile), and hand it a token scoped to the
-   zone (the `DO_DNS_TOKEN` env in the compose file).
+   zone (the `DO_DNS_TOKEN` env in the compose file, also from `.env`).
 4. Open inbound 22 (admin ssh), 80, 443 and 2222 (tunnels).
-5. Point the URL in [scripts/sync-keys.sh](scripts/sync-keys.sh) at the
-   `users` file on your fork.
+5. Point the default URL in [scripts/sync-keys.sh](scripts/sync-keys.sh)
+   at the `users` file on your fork, or set `ALLOWED_USERS` /
+   `ALLOWED_USERS_URL` in `.env` instead.
 
 [infra/](infra) and [.github/workflows/](.github/workflows) are one
 concrete deployment of the above and the only pieces tied to it — delete
