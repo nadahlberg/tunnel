@@ -22,6 +22,18 @@ Add your GitHub username to [users](users) and merge the PR. The server
 re-syncs everyone's keys from `github.com/<user>.keys` every minute, and you
 connect with the matching private key. Nothing to install or configure.
 
+A deployment can take its user list from somewhere else instead. In the
+server's `.env`, the first of these that is set wins:
+
+| Variable            | Meaning                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `ALLOWED_USERS`     | Comma-separated GitHub usernames, e.g. `alice,bob`             |
+| `ALLOWED_USERS_URL` | A URL or local path of a text file with one username per line  |
+| *(neither)*         | The [users](users) file on this repo's `main` branch           |
+
+The file formats are the same as [users](users): one username per line,
+`#` comments allowed.
+
 ## Using it
 
 A dev server on :8000, public at `https://myapp.my-tunnel.com`:
@@ -60,8 +72,9 @@ Both read the domain from `TUNNEL_DOMAIN` in the `.env` file beside the
 compose file; nothing else in the service knows the hostname.
 
 A cron runs [scripts/sync-keys.sh](scripts/sync-keys.sh) every minute to
-mirror the `users` file's GitHub keys into sish's watched directory, so
-access changes need no deploy.
+mirror the allowed users' GitHub keys into sish's watched directory, so
+access changes need no deploy. It reads the same `.env` for
+`ALLOWED_USERS` / `ALLOWED_USERS_URL` (see [Getting access](#getting-access)).
 
 ## Deploying
 
@@ -81,8 +94,9 @@ scratch:
    [Caddyfile](docker/caddy/Caddyfile), and hand it a token scoped to the
    zone (the `DO_DNS_TOKEN` env in the compose file, also from `.env`).
 4. Open inbound 22 (admin ssh), 80, 443 and 2222 (tunnels).
-5. Point the URL in [scripts/sync-keys.sh](scripts/sync-keys.sh) at the
-   `users` file on your fork.
+5. Point the default URL in [scripts/sync-keys.sh](scripts/sync-keys.sh)
+   at the `users` file on your fork, or set `ALLOWED_USERS` /
+   `ALLOWED_USERS_URL` in `.env` instead.
 
 [infra/](infra) and [.github/workflows/](.github/workflows) are one
 concrete deployment of the above and the only pieces tied to it — delete

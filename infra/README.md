@@ -8,7 +8,9 @@ doesn't deploy. The only secrets are `PULUMI_ACCESS_TOKEN` and
 `DIGITALOCEAN_TOKEN`; Caddy also gets the latter for the DNS challenge
 (hardening TODO: scope a token to the zone). The domain is the
 `TUNNEL_DOMAIN` repository variable, which the workflows pass through as an
-environment variable; cloud-init writes it into the droplet's `.env`.
+environment variable; cloud-init writes it into the droplet's `.env`. The
+optional `ALLOWED_USERS` and `ALLOWED_USERS_URL` repository variables go
+through the same way (see the root README for what they do).
 
 Locally:
 
