@@ -35,3 +35,5 @@ jobs:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
           TUNNEL_DOMAIN: ${{ vars.TUNNEL_DOMAIN }}
+          ALLOWED_USERS: ${{ vars.ALLOWED_USERS }}
+          ALLOWED_USERS_URL: ${{ vars.ALLOWED_USERS_URL }}
